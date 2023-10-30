@@ -1,0 +1,6 @@
+../Core/Src/kernel.c:22:6:osKernelInitialize	1
+../Core/Src/kernel.c:29:11:Create_Stack	2
+../Core/Src/kernel.c:38:6:Run_First_Thread	2
+../Core/Src/kernel.c:48:7:osCreateThread	3
+../Core/Src/kernel.c:64:6:osKernelStart	1
+../Core/Src/kernel.c:69:6:SVC_Handler_Main	5
