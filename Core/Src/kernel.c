@@ -19,8 +19,17 @@ uint32_t* currStackptr;
 
 struct k_thread threads;
 
+thread threadArray[NUMBER_OF_STACKS] = {0};
+
+uint32_t activeThread = 0;
+uint32_t numberOfThreads = 0;
+
 void osKernelInitialize(void)
 {
+	//set the priority of PendSV to almost the weakest
+	SHPR3 |= 0xFE << 16; //shift the constant 0xFE 16 bits to set PendSV priority
+	SHPR2 |= 0xFDU << 24; //Set the priority of SVC higher than PendSV
+
 	MSP_INIT_VAL = *(uint32_t**)0x0;
 	newStackptr = MSP_INIT_VAL - STACK_SIZE;
 	threads.sp = MSP_INIT_VAL;
@@ -59,6 +68,9 @@ _Bool osCreateThread(void* fcn)
 	threads.sp = threadStackptr;
 	threads.thread_function = fcn;
 
+	threadArray[numberOfThreads] = threads;
+	numberOfThreads++;
+	return true;
 }
 
 void osKernelStart(void)
@@ -83,11 +95,25 @@ void SVC_Handler_Main( unsigned int *svc_args )
 		case 1:
 			printf("ERROR DETECTED\r\n");
 			break;
+		case YIELD:
+			_ICSR |= 1<<28;
+			__asm("isb");
+			break;
 		case RUN_FIRST_THREAD:
-			__set_PSP((uint32_t)threads.sp);
+			__set_PSP((uint32_t)threadArray[0].sp);
 			runFirstThread();
 			break;
 		default: /* unknown SVC */
 			break;
 	 }
+}
+void osSched(){
+	threadArray[activeThread].sp = (uint32_t*)(__get_PSP() - 8*4);
+	activeThread = (activeThread+1)% numberOfThreads;
+	__set_PSP((uint32_t)threadArray[activeThread].sp);
+	return;
+}
+void osYield(void)
+{
+	__asm("SVC #0x2");
 }

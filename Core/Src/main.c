@@ -62,7 +62,18 @@ int __io_putchar(int ch)
 
 void print_continuously(void){
 	while(1)
-		printf("Hello, World!\r\n");
+	{
+		printf("Thread 1\r\n");
+		osYield();
+	}
+}
+void print_again(void)
+{
+	while(1)
+	{
+		printf("Thread 2\r\n");
+		osYield();
+	}
 }
 void jumpAssembly(void* fcn)
 {
@@ -130,7 +141,8 @@ int main(void)
 
   osKernelInitialize();
   if (osCreateThread((void*)print_continuously))
-	  osKernelStart();
+	  if (osCreateThread((void*)print_again))
+		  osKernelStart();
   // HAL_UART_Transmit(&huart2,&m,1,HAL_MAX_DELAY);
   // printf("MSP Init is: %p\n\r",MSP_INIT_VAL); //note the %p to print a
 
@@ -147,7 +159,6 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
