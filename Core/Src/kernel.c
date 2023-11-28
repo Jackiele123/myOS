@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 extern void runFirstThread(void);
+
 #define RUN_FIRST_THREAD 0x3
 #define STACK_SIZE 0x400
 #define MAX_STACK_SIZE 0x4000
@@ -17,10 +18,9 @@ uint32_t* MSP_INIT_VAL;
 uint32_t* newStackptr;
 uint32_t* currStackptr;
 
-struct k_thread threads;
+thread threads;
 
 thread threadArray[NUMBER_OF_STACKS] = {0};
-
 uint32_t activeThread = 0;
 uint32_t numberOfThreads = 0;
 
@@ -44,27 +44,56 @@ uint32_t* Create_Stack(void)
 	return (stackptr - STACK_SIZE);
 
 }
-void Run_First_Thread(void* fcn)
-{
-	currStackptr = Create_Stack();
-	// Initializing Stack Context
-	*(--currStackptr) = 1<<24;
-	*(--currStackptr) = (uint32_t)fcn;
-	for (int i = 0; i<14; i++)
-		*(--currStackptr) = 0xA;
-}
 
-_Bool osCreateThread(void* fcn)
+//void Run_First_Thread(void* fcn)
+//{
+//	currStackptr = Create_Stack();
+//	// Initializing Stack Context
+//	*(--currStackptr) = 1<<24;
+//	*(--currStackptr) = (uint32_t)fcn;
+//	for (int i = 0; i<14; i++)
+//		*(--currStackptr) = 0xA;
+//}
+
+_Bool osCreateThread(void* fcn, void* args)
 {
 	uint32_t* threadStackptr = Create_Stack();
 	if (threadStackptr == NULL)
 		return false;
+	*(--threadStackptr) = 1<<24;
+		*(--threadStackptr) = (uint32_t)fcn;
+		for (int i = 0; i<14; i++){
+			if (i == 5)
+				*(--threadStackptr) = (uint32_t)args;
+			else
+				*(--threadStackptr) = 0xA;
+		}
+	threads.timeslice = 0x5;
+	threads.runtime = 0x5;
+	threads.sp = threadStackptr;
+	threads.thread_function = fcn;
 
+	threadArray[numberOfThreads] = threads;
+	numberOfThreads++;
+	return true;
+}
+
+_Bool osCreateThreadWithDeadline(void* fcn, void* args, uint32_t timeout)
+{
+	uint32_t* threadStackptr = Create_Stack();
+	if (threadStackptr == NULL)
+		return false;
 	*(--threadStackptr) = 1<<24;
 		*(--threadStackptr) = (uint32_t)fcn;
 		for (int i = 0; i<14; i++)
-			*(--threadStackptr) = 0xA;
-
+		{
+			if (i == 5)
+				*(--threadStackptr) = (uint32_t)args;
+			else
+				*(--threadStackptr) = 0xA;
+		}
+	threads.timeslice = timeout;
+	threads.runtime = timeout;
 	threads.sp = threadStackptr;
 	threads.thread_function = fcn;
 
@@ -96,6 +125,7 @@ void SVC_Handler_Main( unsigned int *svc_args )
 			printf("ERROR DETECTED\r\n");
 			break;
 		case YIELD:
+			threadArray[activeThread].runtime = threadArray[activeThread].timeslice;
 			_ICSR |= 1<<28;
 			__asm("isb");
 			break;

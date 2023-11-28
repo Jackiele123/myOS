@@ -51,6 +51,7 @@ UART_HandleTypeDef huart2;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
+uint32_t global_variable = 1;
 //#define THREAD_STACK_SIZE 1024  // or any size suitable for your application
 
 int __io_putchar(int ch)
@@ -59,20 +60,27 @@ int __io_putchar(int ch)
 	return ch;
 }
 /* USER CODE BEGIN PFP */
+void thread_function(void* args)
+{
 
-void print_continuously(void){
+}
+
+void modify_global_variable(void* args){
+	input_arguments input = *(input_arguments*)args;
 	while(1)
 	{
-		printf("Thread 1\r\n");
+		global_variable += input.add;
+		if (global_variable%21 == 0)
+			global_variable /= input.div;
 		osYield();
 	}
 }
-void print_again(void)
+void print_global_variable(void* args)
 {
+	uint32_t* input = (uint32_t*)args;
 	while(1)
 	{
-		printf("Thread 2\r\n");
-		osYield();
+		printf("global_variable: %ld\r\n", *input);
 	}
 }
 void jumpAssembly(void* fcn)
@@ -139,9 +147,13 @@ int main(void)
   //print_error();
   //print_success();
 
+  input_arguments threadArg;
+  threadArg.add = 5;
+  threadArg.div = 3;
+
   osKernelInitialize();
-  if (osCreateThread((void*)print_continuously))
-	  if (osCreateThread((void*)print_again))
+  if (osCreateThread((void*)modify_global_variable, (void*)&threadArg))
+	  if (osCreateThreadWithDeadline((void*)print_global_variable, (void*)&global_variable, 50))
 		  osKernelStart();
   // HAL_UART_Transmit(&huart2,&m,1,HAL_MAX_DELAY);
   // printf("MSP Init is: %p\n\r",MSP_INIT_VAL); //note the %p to print a

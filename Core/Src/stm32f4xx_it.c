@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+#include "kernel.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -178,7 +179,17 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
-
+  if (threadArray[activeThread].sp != NULL)
+  {
+	  if (threadArray[activeThread].runtime > 0)
+		  --threadArray[activeThread].runtime;
+	  if (threadArray[activeThread].runtime == 0)
+	  {
+		  threadArray[activeThread].runtime = threadArray[activeThread].timeslice;
+		  _ICSR |= 1<<28;
+		  __asm("isb");
+	  }
+  }
   /* USER CODE END SysTick_IRQn 1 */
 }
 
